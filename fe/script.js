@@ -4,7 +4,7 @@ const submitBtn = document.getElementById("submit-btn");
 const resultsBody = document.getElementById("results-body");
 const countBadge = document.getElementById("count-badge");
 
-const backendUrl = window.BALINAVI_BACKEND_URL || "http://localhost:8000/api/rekomendasi";
+let backendUrl = "";
 
 function formatRupiah(value) {
   return new Intl.NumberFormat("id-ID", {
@@ -42,8 +42,31 @@ function renderRows(data) {
   countBadge.textContent = `${data.length} hasil`;
 }
 
+async function loadRuntimeConfig() {
+  try {
+    const response = await fetch("/api/config", { method: "GET" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const config = await response.json();
+    backendUrl = String(config.backendUrl || "").trim();
+    if (!backendUrl) {
+      throw new Error("BACKEND_URL belum di-set");
+    }
+    statusEl.textContent = "Konfigurasi backend berhasil dimuat.";
+  } catch (error) {
+    console.error(error);
+    statusEl.textContent = "Konfigurasi backend belum siap. Set BACKEND_URL di environment Vercel.";
+  }
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+
+  if (!backendUrl) {
+    statusEl.textContent = "URL backend belum tersedia. Set BACKEND_URL di Vercel lalu refresh halaman.";
+    return;
+  }
 
   const payload = {
     total_budget: Number(document.getElementById("total_budget").value),
@@ -78,3 +101,5 @@ form.addEventListener("submit", async (event) => {
     submitBtn.disabled = false;
   }
 });
+
+loadRuntimeConfig();
