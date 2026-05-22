@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BaliNavi Lite - Smart Travel Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">BaliNavi Lite</p>
+      <h1>Rencana Wisata Bali Berbasis Budget + Preferensi</h1>
+      <p class="subtitle">
+        Frontend ini di-deploy ke Vercel. Backend FastAPI tetap berjalan terpisah dan dipanggil lewat HTTP API.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Input Perjalanan</h2>
+      <form id="rekomendasi-form" class="form-grid">
+        <label>
+          Total Budget (Rupiah)
+          <input id="total_budget" type="number" min="10000" step="10000" value="500000" required />
+        </label>
+
+        <label>
+          Durasi (Hari)
+          <input id="durasi_hari" type="number" min="1" step="1" value="2" required />
+        </label>
+
+        <label>
+          Jumlah Orang
+          <input id="jumlah_orang" type="number" min="1" step="1" value="2" required />
+        </label>
+
+        <label>
+          Preferensi Suasana
+          <input id="preferensi_user" type="text" value="sunset budaya" required />
+        </label>
+
+        <button id="submit-btn" type="submit">Cari Rekomendasi</button>
+      </form>
+
+      <p id="status" class="status"></p>
+    </section>
+
+    <section class="panel">
+      <div class="results-head">
+        <h2>Hasil Rekomendasi</h2>
+        <span id="count-badge" class="badge">0 hasil</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Destinasi</th>
+              <th>Lokasi</th>
+              <th>Harga Tiket</th>
+              <th>Skor</th>
+            </tr>
+          </thead>
+          <tbody id="results-body">
+            <tr>
+              <td colspan="4" class="empty">Belum ada data. Kirim request untuk melihat rekomendasi.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>

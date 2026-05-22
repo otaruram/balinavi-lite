@@ -1,7 +1,10 @@
+# Mengimpor os untuk membaca konfigurasi path dataset dari environment variable.
+import os
+
 # Mengimpor tipe List agar anotasi tipe data list menjadi jelas untuk pembaca pemula.
 from typing import List
 
-# Mengimpor pandas untuk memudahkan manipulasi data tabular berbentuk DataFrame.
+# Mengimpor pandas untuk membangun fallback dataset lokal saat file Kaggle belum tersedia.
 import pandas as pd
 
 # Mengimpor FastAPI sebagai framework backend HTTP API yang ringan dan cepat.
@@ -13,14 +16,17 @@ from fastapi.middleware.cors import CORSMiddleware
 # Mengimpor BaseModel untuk validasi struktur request JSON dan Field untuk aturan nilai input.
 from pydantic import BaseModel, Field
 
-# Mengimpor TfidfVectorizer untuk mengubah teks vibe menjadi representasi angka berbasis TF-IDF.
-from sklearn.feature_extraction.text import TfidfVectorizer
-
-# Mengimpor cosine_similarity untuk menghitung tingkat kemiripan preferensi user terhadap deskripsi tempat.
-from sklearn.metrics.pairwise import cosine_similarity
+# Mengimpor class HybridRecommender agar logic hybrid terpusat dalam satu file.
+from recommender import HybridRecommender
 
 # Membuat objek aplikasi FastAPI sebagai pintu utama semua endpoint backend.
 app = FastAPI(title="BaliNavi Lite API", version="1.0.0")
+
+# Membuat satu instance recommender agar kamus harga dan logic hybrid dipakai konsisten.
+recommender = HybridRecommender()
+
+# Menentukan path dataset dari environment atau fallback ke file CSV nyata yang ada saat ini.
+DATASET_PATH = os.getenv("DATASET_PATH", "data/Bali Popular Destination for Tourist 2022 - Sheet1.csv")
 
 # Menambahkan middleware CORS agar request dari frontend tidak diblokir browser saat beda host/port.
 app.add_middleware(
@@ -44,101 +50,102 @@ class RekomendasiRequest(BaseModel):
     preferensi_user: str = Field(..., min_length=1, description="Preferensi vibe/suasana")
 
 
-# Membuat fungsi helper untuk mensimulasikan data tempat wisata Bali yang sederhana namun representatif.
-def siapkan_dataset_bali() -> pd.DataFrame:
-    # Menyiapkan list data mentah 5 tempat wisata seolah berasal dari dataset Kaggle.
-    data_tempat = [
+# Membuat helper untuk menyediakan dataset fallback jika file CSV Kaggle belum terpasang.
+def bangun_dataset_fallback() -> pd.DataFrame:
+    # Menyiapkan data mini berformat kolom Kaggle agar pipeline recommender tetap kompatibel.
+    data_fallback = [
         {
-            "nama_tempat": "Pantai Kuta",
-            "kategori": "Pantai",
-            "vibe_deskripsi": "pantai ramai sunset surfing belanja kuliner malam",
+            "nama": "Taman Mumbul Sangeh",
+            "kategori": "alam",
+            "kabupaten_kota": "Badung",
+            "rating": 4.3,
+            "preferensi": "tenang alam hijau",
+            "latitude": -8.5001,
+            "longitude": 115.2065,
         },
         {
-            "nama_tempat": "Ubud Monkey Forest",
-            "kategori": "Alam",
-            "vibe_deskripsi": "hutan asri tenang budaya alam spiritual jalan kaki",
+            "nama": "Sangeh Monkey Forest",
+            "kategori": "alam",
+            "kabupaten_kota": "Badung",
+            "rating": 4.4,
+            "preferensi": "hutan satwa keluarga",
+            "latitude": -8.4829,
+            "longitude": 115.2070,
         },
         {
-            "nama_tempat": "Tegallalang Rice Terrace",
-            "kategori": "Pemandangan",
-            "vibe_deskripsi": "sawah hijau foto instagram santai udara segar",
+            "nama": "Satria Gatotkaca Park",
+            "kategori": "taman kota",
+            "kabupaten_kota": "Badung",
+            "rating": 4.2,
+            "preferensi": "foto landmark transit",
+            "latitude": -8.7469,
+            "longitude": 115.1672,
         },
         {
-            "nama_tempat": "Pura Tanah Lot",
-            "kategori": "Budaya",
-            "vibe_deskripsi": "pura ikonik sunset budaya sejarah sakral",
+            "nama": "West Garden Pangi",
+            "kategori": "alam",
+            "kabupaten_kota": "Tabanan",
+            "rating": 4.1,
+            "preferensi": "santai kebun keluarga",
+            "latitude": -8.5032,
+            "longitude": 115.0210,
         },
         {
-            "nama_tempat": "Garuda Wisnu Kencana",
-            "kategori": "Taman Budaya",
-            "vibe_deskripsi": "patung megah pertunjukan seni budaya keluarga",
+            "nama": "Obyek Wisata Batu Belah Antiga",
+            "kategori": "budaya",
+            "kabupaten_kota": "Karangasem",
+            "rating": 4.0,
+            "preferensi": "sejarah budaya lokal",
+            "latitude": -8.5128,
+            "longitude": 115.5891,
         },
     ]
 
-    # Membuat kamus harga sintetis hasil riset manual untuk menutup data harga tiket yang bolong.
-    kamus_harga_bali = {
-        "Pantai Kuta": 15000,
-        "Ubud Monkey Forest": 80000,
-        "Tegallalang Rice Terrace": 25000,
-        "Pura Tanah Lot": 60000,
-        "Garuda Wisnu Kencana": 125000,
-    }
+    # Mengubah list dictionary fallback menjadi DataFrame siap diproses recommender.
+    return pd.DataFrame(data_fallback)
 
-    # Mengubah list dictionary menjadi DataFrame agar mudah difilter dan diperingkat.
-    df = pd.DataFrame(data_tempat)
 
-    # Menambahkan kolom harga_tiket menggunakan .map() dari nama tempat ke kamus harga.
-    df["harga_tiket"] = df["nama_tempat"].map(kamus_harga_bali)
+# Membuat helper pemuat data utama agar endpoint tidak berisi detail handling file.
+def muat_dataset_terproses() -> pd.DataFrame:
+    # Mencoba memuat dataset Kaggle dari path konfigurasi dan langsung diperkaya harga.
+    if os.path.exists(DATASET_PATH):
+        return recommender.load_and_enrich_data(DATASET_PATH)
 
-    # Mengisi nilai harga yang masih kosong dengan 0 sebagai fallback aman pada contoh edukatif.
-    df["harga_tiket"] = df["harga_tiket"].fillna(0)
+    # Membangun fallback dataset saat file belum tersedia agar demo tetap bisa jalan.
+    df_fallback = bangun_dataset_fallback()
 
-    # Mengubah tipe harga menjadi integer agar output rapi dan konsisten.
-    df["harga_tiket"] = df["harga_tiket"].astype(int)
+    # Menyuntikkan harga menggunakan kamus internal recommender agar logika tetap konsisten.
+    df_fallback["harga_tiket_clean"] = df_fallback["nama"].map(recommender.kamus_harga_bali).fillna(20000).astype(int)
 
-    # Mengembalikan DataFrame siap pakai untuk proses filtering dan ranking.
-    return df
+    # Membuat kolom deskripsi suasana supaya fallback tetap kompatibel dengan TF-IDF pipeline.
+    df_fallback["deskripsi_suasana"] = (
+        df_fallback["nama"].fillna("").astype(str)
+        + " "
+        + df_fallback["kategori"].fillna("").astype(str)
+        + " "
+        + df_fallback["kabupaten_kota"].fillna("").astype(str)
+        + " "
+        + df_fallback["preferensi"].fillna("").astype(str)
+    )
+
+    # Mengembalikan dataset fallback yang sudah memiliki kolom wajib pipeline hybrid.
+    return df_fallback
 
 
 # Membuat endpoint POST untuk menghasilkan rekomendasi berdasarkan budget dan preferensi vibe.
 @app.post("/api/rekomendasi")
 def rekomendasi_trip(payload: RekomendasiRequest) -> List[dict]:
-    # Menyiapkan dataset simulasi Bali yang sudah diperkaya harga tiket dari kamus hardcode.
-    df = siapkan_dataset_bali()
+    # Memuat dataset utama Kaggle atau fallback lokal yang sudah punya kolom wajib hybrid.
+    df_processed = muat_dataset_terproses()
 
-    # Menghitung batas budget maksimum per orang per hari agar aturan bisnis lebih adil.
-    budget_maks_per_orang_per_hari = payload.total_budget / (payload.jumlah_orang * payload.durasi_hari)
+    # Menjalankan engine hybrid terpusat agar logic data dan rekomendasi tidak dobel di file lain.
+    hasil = recommender.get_recommendations(
+        df_processed=df_processed,
+        total_budget=payload.total_budget,
+        durasi_hari=payload.durasi_hari,
+        jumlah_orang=payload.jumlah_orang,
+        preferensi_user=payload.preferensi_user,
+    )
 
-    # Memfilter data hanya untuk tempat yang harga tiketnya tidak melebihi batas budget terhitung.
-    kandidat = df[df["harga_tiket"] <= budget_maks_per_orang_per_hari].copy()
-
-    # Jika kandidat kosong maka langsung kembalikan list kosong agar frontend mudah menangani kondisi ini.
-    if kandidat.empty:
-        return []
-
-    # Membuat vectorizer TF-IDF untuk membaca pola kata penting pada kolom vibe_deskripsi.
-    vectorizer = TfidfVectorizer()
-
-    # Melatih vectorizer pada teks kandidat lalu mengubah teks menjadi matriks fitur numerik.
-    matriks_tfidf = vectorizer.fit_transform(kandidat["vibe_deskripsi"])
-
-    # Mengubah preferensi user menjadi vektor TF-IDF pada ruang fitur yang sama.
-    vektor_user = vectorizer.transform([payload.preferensi_user.lower()])
-
-    # Menghitung skor kemiripan cosine antara vektor user dengan setiap tempat kandidat.
-    skor_kemiripan = cosine_similarity(vektor_user, matriks_tfidf).flatten()
-
-    # Menyimpan skor kemiripan ke kolom baru agar bisa diurutkan dari paling relevan.
-    kandidat["skor_kemiripan"] = skor_kemiripan
-
-    # Mengurutkan kandidat dari skor tertinggi ke terendah untuk membentuk ranking rekomendasi.
-    hasil = kandidat.sort_values(by="skor_kemiripan", ascending=False)
-
-    # Memilih kolom penting saja agar response JSON ringkas dan mudah dibaca di frontend.
-    hasil = hasil[["nama_tempat", "kategori", "harga_tiket", "vibe_deskripsi", "skor_kemiripan"]]
-
-    # Membulatkan skor agar tampilan output lebih ramah presentasi dan tidak terlalu panjang.
-    hasil["skor_kemiripan"] = hasil["skor_kemiripan"].round(4)
-
-    # Mengonversi DataFrame menjadi list of dict supaya sesuai format response JSON endpoint.
-    return hasil.to_dict(orient="records")
+    # Mengembalikan list rekomendasi final untuk dikonsumsi frontend Streamlit.
+    return hasil

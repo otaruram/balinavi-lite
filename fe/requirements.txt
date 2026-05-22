@@ -1,3 +1,0 @@
-streamlit==1.37.1 # Framework UI Python untuk membuat antarmuka cepat tanpa JavaScript.
-requests==2.32.3 # Client HTTP sederhana untuk mengirim POST request ke backend FastAPI.
-pandas==2.2.2 # Library data tabular untuk menampilkan hasil JSON menjadi tabel rapi.
