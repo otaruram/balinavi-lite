@@ -35,6 +35,23 @@ body {
   animation: rise 0.6s ease-out;
 }
 
+.brand-mark-wrap {
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
 .eyebrow {
   margin: 0;
   font-size: 12px;
@@ -129,6 +146,22 @@ button:disabled {
   margin: 12px 0 0;
   font-size: 14px;
   color: var(--muted);
+}
+
+.streamlit-link-wrap {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.streamlit-link-wrap a {
+  color: #111;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.hidden {
+  display: none;
 }
 
 .results-head {

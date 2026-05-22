@@ -3,3 +3,4 @@ uvicorn[standard]==0.30.6 # Server ASGI untuk menjalankan aplikasi FastAPI di pr
 pandas==2.2.2 # Library olah data tabular untuk map harga, filter, dan transformasi DataFrame.
 scikit-learn==1.5.1 # Library machine learning untuk TF-IDF dan cosine similarity berbasis NLP ringan.
 pydantic==2.8.2 # Validator schema request supaya input JSON dari frontend tetap aman dan konsisten.
+streamlit==1.37.1 # Framework UI untuk menjalankan backend-engine sebagai aplikasi Streamlit Cloud.
