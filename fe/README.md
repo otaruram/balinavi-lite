@@ -3,11 +3,15 @@
 Frontend ini adalah web statis (HTML/CSS/JS) yang siap deploy ke Vercel.
 
 ## 1) Konfigurasi URL Backend
-Frontend saat ini menggunakan URL hardcoded:
-- Streamlit app: `https://balinavi.streamlit.app`
-- Endpoint API: `https://balinavi.streamlit.app/api/rekomendasi`
+Frontend saat ini menggunakan URL hardcoded Streamlit:
+- `https://balinavi.streamlit.app`
 
-Jika URL berubah, edit langsung pada file `script.js`.
+Alur integrasi final:
+1. User isi form di FE Vercel.
+2. FE mengirim parameter lewat query string ke Streamlit (`total_budget`, `durasi_hari`, `jumlah_orang`, `preferensi_user`).
+3. Streamlit BE auto-run engine hybrid dan menampilkan hasil.
+
+Jika URL Streamlit berubah, edit langsung pada file `script.js`.
 
 ## 2) Run Lokal
 Cukup buka `index.html` menggunakan static server.
@@ -18,6 +22,5 @@ Cukup buka `index.html` menggunakan static server.
 3. Deploy langsung (karena static site tanpa konfigurasi env wajib).
 
 ## 4) Catatan Integrasi
-- Backend FastAPI tetap terpisah di folder `be`.
-- CORS backend sudah terbuka (`allow_origins=["*"]`) untuk mempermudah integrasi MVP.
+- Backend mode yang dipakai sekarang adalah Streamlit app (`be/streamlit_app.py`).
 - Frontend menampilkan tautan Streamlit dari nilai hardcoded di `script.js`.

@@ -7,7 +7,6 @@ const streamlitLinkWrap = document.getElementById("streamlit-link-wrap");
 const streamlitLink = document.getElementById("streamlit-link");
 
 const streamlitUrl = "https://balinavi.streamlit.app";
-const backendUrl = "https://balinavi.streamlit.app/api/rekomendasi";
 
 function formatRupiah(value) {
   return new Intl.NumberFormat("id-ID", {
@@ -47,7 +46,7 @@ function renderRows(data) {
 
 streamlitLink.href = streamlitUrl;
 streamlitLinkWrap.classList.remove("hidden");
-statusEl.textContent = "Backend URL sudah di-hardcode ke balinavi.streamlit.app.";
+statusEl.textContent = "Form akan mengirim parameter langsung ke aplikasi Streamlit backend.";
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -60,28 +59,15 @@ form.addEventListener("submit", async (event) => {
   };
 
   submitBtn.disabled = true;
-  statusEl.textContent = "Menghubungi backend dan menghitung rekomendasi...";
+  statusEl.textContent = "Mengarahkan ke Streamlit backend...";
 
-  try {
-    const response = await fetch(backendUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  const params = new URLSearchParams({
+    total_budget: String(payload.total_budget),
+    durasi_hari: String(payload.durasi_hari),
+    jumlah_orang: String(payload.jumlah_orang),
+    preferensi_user: payload.preferensi_user,
+    auto_run: "1",
+  });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    renderRows(data);
-    statusEl.textContent = "Rekomendasi berhasil didapatkan.";
-  } catch (error) {
-    console.error(error);
-    statusEl.textContent = `Gagal menghubungi backend (${error.message}). Cek URL API dan CORS.`;
-  } finally {
-    submitBtn.disabled = false;
-  }
+  window.location.href = `${streamlitUrl}?${params.toString()}`;
 });

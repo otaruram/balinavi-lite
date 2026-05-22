@@ -19,6 +19,37 @@ DATASET_PATH = os.getenv("DATASET_PATH", "data/Bali Popular Destination for Tour
 # Membuat instance recommender sekali agar pemanggilan fungsi lebih efisien.
 recommender = HybridRecommender()
 
+
+# Membuat helper parsing integer dari query param agar aman jika user kirim nilai tidak valid.
+def parse_int_query(value: str, default: int, min_value: int) -> int:
+    # Mencoba konversi nilai query param menjadi integer.
+    try:
+        parsed = int(value)
+    # Jika gagal konversi maka gunakan nilai default agar aplikasi tetap stabil.
+    except (TypeError, ValueError):
+        return default
+    # Mengembalikan nilai terbesar antara parsed dan min_value agar tidak melanggar batas input.
+    return max(parsed, min_value)
+
+
+# Mengambil query param dari URL agar frontend Vercel bisa mengirim parameter ke Streamlit.
+query = st.query_params
+
+# Menyiapkan default total budget dari query jika ada, atau gunakan nilai bawaan aplikasi.
+default_total_budget = parse_int_query(query.get("total_budget", 500000), default=500000, min_value=10000)
+
+# Menyiapkan default durasi hari dari query jika ada, atau gunakan nilai bawaan aplikasi.
+default_durasi_hari = parse_int_query(query.get("durasi_hari", 2), default=2, min_value=1)
+
+# Menyiapkan default jumlah orang dari query jika ada, atau gunakan nilai bawaan aplikasi.
+default_jumlah_orang = parse_int_query(query.get("jumlah_orang", 2), default=2, min_value=1)
+
+# Menyiapkan default preferensi dari query jika ada, atau gunakan preferensi bawaan aplikasi.
+default_preferensi_user = str(query.get("preferensi_user", "sunset budaya"))
+
+# Menentukan apakah aplikasi perlu auto-run dari query param auto_run=1.
+auto_run = str(query.get("auto_run", "0")) == "1"
+
 # Menampilkan judul aplikasi backend agar jelas bahwa ini mode BE berbasis Streamlit.
 st.title("BaliNavi Backend Engine (Streamlit)")
 
@@ -45,19 +76,22 @@ col1, col2 = st.columns(2)
 # Menempatkan input total budget pada kolom pertama.
 with col1:
     # Input total budget dalam Rupiah.
-    total_budget = st.number_input("Total budget (Rupiah)", min_value=10000, value=500000, step=10000)
+    total_budget = st.number_input("Total budget (Rupiah)", min_value=10000, value=default_total_budget, step=10000)
     # Input durasi perjalanan dalam hari.
-    durasi_hari = st.number_input("Durasi perjalanan (hari)", min_value=1, value=2, step=1)
+    durasi_hari = st.number_input("Durasi perjalanan (hari)", min_value=1, value=default_durasi_hari, step=1)
 
 # Menempatkan input jumlah orang dan preferensi pada kolom kedua.
 with col2:
     # Input jumlah orang dalam rombongan.
-    jumlah_orang = st.number_input("Jumlah orang", min_value=1, value=2, step=1)
+    jumlah_orang = st.number_input("Jumlah orang", min_value=1, value=default_jumlah_orang, step=1)
     # Input preferensi suasana untuk proses NLP ranking.
-    preferensi_user = st.text_input("Preferensi suasana", value="sunset budaya")
+    preferensi_user = st.text_input("Preferensi suasana", value=default_preferensi_user)
 
 # Menjalankan proses rekomendasi saat tombol ditekan.
-if st.button("Jalankan Rekomendasi"):
+run_clicked = st.button("Jalankan Rekomendasi")
+
+# Menjalankan proses saat tombol ditekan atau saat mode auto_run aktif dari query param.
+if run_clicked or auto_run:
     # Menjalankan engine hybrid dengan parameter input user.
     hasil = recommender.get_recommendations(
         df_processed=df_processed,
