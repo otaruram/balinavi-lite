@@ -13,8 +13,9 @@ from recommender import HybridRecommender
 # Mengatur konfigurasi halaman supaya tampilan nyaman saat demo mentoring.
 st.set_page_config(page_title="BaliNavi BE - Streamlit", page_icon="B", layout="wide")
 
-# Menentukan path dataset default yang dipakai ketika env DATASET_PATH belum diisi.
-DATASET_PATH = os.getenv("DATASET_PATH", "data/Bali Popular Destination for Tourist 2022 - Sheet1.csv")
+# Menentukan path dataset default relatif terhadap lokasi file ini agar benar di Streamlit Cloud.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+DATASET_PATH = os.getenv("DATASET_PATH", os.path.join(_HERE, "data", "Bali Popular Destination for Tourist 2022 - Sheet1.csv"))
 
 # Membuat instance recommender sekali agar pemanggilan fungsi lebih efisien.
 recommender = HybridRecommender()
