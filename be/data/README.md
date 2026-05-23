@@ -1,17 +1,26 @@
-# Setup Dataset CSV dari Kaggle Notebook
+# Dataset BaliNavi Lite
 
-1. Buka notebook Kaggle Anda dan jalankan sampai sel terakhir.
-2. Jalankan sel ekspor CSV:
+Folder ini menyimpan dataset utama untuk engine rekomendasi BaliNavi Lite.
 
-```python
-output_path = "/kaggle/working/dataset_tempat_wisata_bali_cleaned.csv"
-df.to_csv(output_path, index=False)
+## File aktif saat ini
+
+- `Bali Popular Destination for Tourist 2022 - Sheet1.csv`
+
+## Cara pakai
+
+1. Simpan file CSV Anda di folder ini.
+2. Secara default app membaca file:
+	- `be/data/Bali Popular Destination for Tourist 2022 - Sheet1.csv`
+3. Jika ingin pakai file lain, set env var `DATASET_PATH` sebelum menjalankan Streamlit.
+
+Contoh PowerShell:
+
+```powershell
+$env:DATASET_PATH = "C:\path\ke\dataset_lain.csv"
+streamlit run be/streamlit_app.py
 ```
 
-3. Download file `dataset_tempat_wisata_bali_cleaned.csv` dari panel Output Kaggle.
-4. Simpan file tersebut ke folder ini (`balinavi-lite/be/data/`).
-5. Jalankan backend dari folder `balinavi-lite/be`.
+## Catatan
 
-Catatan:
-- Backend otomatis membaca `data/dataset_tempat_wisata_bali_cleaned.csv`.
-- Harga tiket tetap di-enrich dari hardcoded dictionary pada `recommender.py`.
+- Engine tetap membuat kolom `harga_tiket_clean` dari mapping harga pada `be/recommender.py`.
+- Jika nama place tidak ada di kamus harga, sistem memakai fallback default `20000` agar pipeline tetap stabil.
