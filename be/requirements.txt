@@ -1,6 +1,4 @@
-fastapi==0.115.0 # Framework utama backend untuk membuat endpoint API dengan cepat.
-uvicorn[standard]==0.30.6 # Server ASGI untuk menjalankan aplikasi FastAPI di produksi sederhana.
-pandas==2.2.2 # Library olah data tabular untuk map harga, filter, dan transformasi DataFrame.
-scikit-learn==1.5.1 # Library machine learning untuk TF-IDF dan cosine similarity berbasis NLP ringan.
-pydantic==2.8.2 # Validator schema request supaya input JSON dari frontend tetap aman dan konsisten.
-streamlit==1.37.1 # Framework UI untuk menjalankan backend-engine sebagai aplikasi Streamlit Cloud.
+pandas>=2.3.0,<3 # Versi modern agar wheel tersedia di runtime Python terbaru.
+scikit-learn>=1.6.0,<2 # Mesin TF-IDF dan cosine similarity untuk ranking preferensi.
+streamlit>=1.45.0,<2 # UI backend utama untuk deployment di Streamlit Cloud.
+pillow>=11.0.0,<12 # Dipin modern untuk menghindari build source Pillow 10.x di Python 3.14.

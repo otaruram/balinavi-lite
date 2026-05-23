@@ -48,6 +48,11 @@ def parse_int_query(value: str, default: int, min_value: int) -> int:
     return max(parsed, min_value)
 
 
+# Membuat helper format Rupiah agar ringkasan biaya lebih enak dibaca.
+def format_rupiah(value: float) -> str:
+    return f"Rp{int(value):,}".replace(",", ".")
+
+
 # Mengambil query param dari URL agar frontend Vercel bisa mengirim parameter ke Streamlit.
 query = st.query_params
 
@@ -124,13 +129,70 @@ if run_clicked or auto_run:
         if not hasil:
             # Menampilkan warning agar user mencoba parameter budget lain.
             st.warning("Tidak ada rekomendasi yang lolos budget harian per orang.")
+            plafon_harian = float(total_budget) / (int(durasi_hari) * int(jumlah_orang))
+            st.info(
+                "Coba naikkan total budget atau sederhanakan rencana. "
+                f"Plafon saat ini: {format_rupiah(plafon_harian)} per orang per hari."
+            )
         else:
-            # Menampilkan notifikasi sukses dan jumlah destinasi yang didapat.
-            st.success(f"Berhasil mendapatkan {len(hasil)} rekomendasi.")
-            # Mengubah list dictionary menjadi DataFrame agar tabel rapi di Streamlit.
+            # Mengubah list dictionary menjadi DataFrame agar bisa ditampilkan sebagai planner ringkas.
             df_hasil = pd.DataFrame(hasil)
-            # Menampilkan tabel hasil rekomendasi untuk bahan analisis dan demo.
-            st.dataframe(df_hasil, use_container_width=True)
+
+            # Menyiapkan ringkasan KPI agar user cepat membaca kualitas rencana trip.
+            total_tiket = float(df_hasil["harga_tiket_clean"].sum()) if "harga_tiket_clean" in df_hasil.columns else 0.0
+            budget_terpakai = (total_tiket / float(total_budget) * 100.0) if float(total_budget) > 0 else 0.0
+            skor_rata = float(df_hasil["skor_total"].mean()) if "skor_total" in df_hasil.columns else 0.0
+
+            kpi1, kpi2, kpi3 = st.columns(3)
+            with kpi1:
+                st.metric("Total Rekomendasi", f"{len(df_hasil)} destinasi")
+            with kpi2:
+                st.metric("Estimasi Total Tiket", format_rupiah(total_tiket))
+            with kpi3:
+                st.metric("Skor Rata-rata", f"{skor_rata:.2f}")
+
+            st.progress(min(max(budget_terpakai / 100.0, 0.0), 1.0))
+            st.caption(f"Perkiraan penggunaan budget tiket: {budget_terpakai:.1f}% dari total budget.")
+
+            # Menampilkan notifikasi sukses dan top insight hasil ranking.
+            top_place = str(df_hasil.iloc[0].get("Place", "Top destinasi"))
+            st.success(f"Rencana berhasil dibuat. Top pick saat ini: {top_place}.")
+
+            # Menampilkan tabel hasil rekomendasi yang sudah diperkaya skor dan alasan.
+            kolom_tampil = [
+                "Place",
+                "Location",
+                "harga_tiket_clean",
+                "Google Maps Rating",
+                "skor_total",
+                "itinerary_hari",
+                "alasan_rekomendasi",
+            ]
+            kolom_tampil = [kol for kol in kolom_tampil if kol in df_hasil.columns]
+            st.dataframe(df_hasil[kolom_tampil], use_container_width=True)
+
+            # Menampilkan itinerary per hari agar output langsung siap dipakai user.
+            if "itinerary_hari" in df_hasil.columns:
+                st.subheader("Itinerary Harian")
+                max_hari = int(df_hasil["itinerary_hari"].max())
+                tab_hari = st.tabs([f"Hari {idx}" for idx in range(1, max_hari + 1)])
+                for idx, tab in enumerate(tab_hari, start=1):
+                    with tab:
+                        agenda_hari = df_hasil[df_hasil["itinerary_hari"] == idx]
+                        if agenda_hari.empty:
+                            st.caption("Belum ada destinasi untuk hari ini.")
+                            continue
+                        for _, item in agenda_hari.iterrows():
+                            nama = item.get("Place", "Destinasi")
+                            lokasi = item.get("Location", "Lokasi tidak tersedia")
+                            rating = float(item.get("Google Maps Rating", 0.0))
+                            harga = float(item.get("harga_tiket_clean", 0.0))
+                            alasan = item.get("alasan_rekomendasi", "Cocok dengan profil perjalanan kamu.")
+                            with st.container(border=True):
+                                st.markdown(f"### {nama}")
+                                st.write(f"Lokasi: {lokasi}")
+                                st.write(f"Rating: {rating:.1f} | Estimasi tiket: {format_rupiah(harga)}")
+                                st.caption(alasan)
     except Exception as exc:
         logger.exception(
             "Gagal menjalankan rekomendasi. budget=%s, durasi=%s, orang=%s, preferensi=%s",
