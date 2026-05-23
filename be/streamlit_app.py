@@ -1,5 +1,6 @@
 # Mengimpor os untuk membaca path dataset dari environment variable Streamlit Cloud.
 import os
+import logging
 
 # Mengimpor pandas untuk menampilkan hasil rekomendasi dalam bentuk tabel rapi.
 import pandas as pd
@@ -16,6 +17,20 @@ st.set_page_config(page_title="BaliNavi BE - Streamlit", page_icon="B", layout="
 # Menentukan path dataset default relatif terhadap lokasi file ini agar benar di Streamlit Cloud.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DATASET_PATH = os.getenv("DATASET_PATH", os.path.join(_HERE, "data", "Bali Popular Destination for Tourist 2022 - Sheet1.csv"))
+
+# Menyusun lokasi log aplikasi agar error runtime bisa ditelusuri saat deploy.
+LOG_DIR = os.path.join(_HERE, "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE_PATH = os.path.join(LOG_DIR, "streamlit_app.log")
+
+# Menyiapkan logger tunggal untuk aplikasi Streamlit ini.
+logger = logging.getLogger("balinavi_lite_streamlit")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(LOG_FILE_PATH, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(file_handler)
+    logger.propagate = False
 
 # Membuat instance recommender sekali agar pemanggilan fungsi lebih efisien.
 recommender = HybridRecommender()
@@ -59,6 +74,7 @@ st.caption("Aplikasi ini menjalankan logika hybrid budget + NLP langsung di Stre
 
 # Menampilkan path dataset aktif agar transparan saat debugging data source.
 st.write(f"Dataset path aktif: {DATASET_PATH}")
+st.caption(f"Log file: {LOG_FILE_PATH}")
 
 # Mencoba memuat dan memperkaya dataset menggunakan engine recommender.
 try:
@@ -66,6 +82,7 @@ try:
     df_processed = recommender.load_and_enrich_data(DATASET_PATH)
 # Menangkap error loading agar aplikasi tidak crash total saat dataset bermasalah.
 except Exception as exc:
+    logger.exception("Gagal memuat dataset pada path: %s", DATASET_PATH)
     # Menampilkan pesan error yang jelas agar perbaikan cepat dilakukan.
     st.error(f"Gagal memuat dataset: {exc}")
     # Menghentikan eksekusi lebih lanjut agar blok input tidak jalan pada data invalid.
@@ -93,26 +110,37 @@ run_clicked = st.button("Jalankan Rekomendasi")
 
 # Menjalankan proses saat tombol ditekan atau saat mode auto_run aktif dari query param.
 if run_clicked or auto_run:
-    # Menjalankan engine hybrid dengan parameter input user.
-    hasil = recommender.get_recommendations(
-        df_processed=df_processed,
-        total_budget=float(total_budget),
-        durasi_hari=int(durasi_hari),
-        jumlah_orang=int(jumlah_orang),
-        preferensi_user=preferensi_user,
-    )
+    try:
+        # Menjalankan engine hybrid dengan parameter input user.
+        hasil = recommender.get_recommendations(
+            df_processed=df_processed,
+            total_budget=float(total_budget),
+            durasi_hari=int(durasi_hari),
+            jumlah_orang=int(jumlah_orang),
+            preferensi_user=preferensi_user,
+        )
 
-    # Menangani kondisi jika tidak ada hasil yang lolos filter budget.
-    if not hasil:
-        # Menampilkan warning agar user mencoba parameter budget lain.
-        st.warning("Tidak ada rekomendasi yang lolos budget harian per orang.")
-    else:
-        # Menampilkan notifikasi sukses dan jumlah destinasi yang didapat.
-        st.success(f"Berhasil mendapatkan {len(hasil)} rekomendasi.")
-        # Mengubah list dictionary menjadi DataFrame agar tabel rapi di Streamlit.
-        df_hasil = pd.DataFrame(hasil)
-        # Menampilkan tabel hasil rekomendasi untuk bahan analisis dan demo.
-        st.dataframe(df_hasil, use_container_width=True)
+        # Menangani kondisi jika tidak ada hasil yang lolos filter budget.
+        if not hasil:
+            # Menampilkan warning agar user mencoba parameter budget lain.
+            st.warning("Tidak ada rekomendasi yang lolos budget harian per orang.")
+        else:
+            # Menampilkan notifikasi sukses dan jumlah destinasi yang didapat.
+            st.success(f"Berhasil mendapatkan {len(hasil)} rekomendasi.")
+            # Mengubah list dictionary menjadi DataFrame agar tabel rapi di Streamlit.
+            df_hasil = pd.DataFrame(hasil)
+            # Menampilkan tabel hasil rekomendasi untuk bahan analisis dan demo.
+            st.dataframe(df_hasil, use_container_width=True)
+    except Exception as exc:
+        logger.exception(
+            "Gagal menjalankan rekomendasi. budget=%s, durasi=%s, orang=%s, preferensi=%s",
+            total_budget,
+            durasi_hari,
+            jumlah_orang,
+            preferensi_user,
+        )
+        st.error(f"Terjadi error saat menjalankan rekomendasi: {exc}")
+        st.info(f"Cek log detail di: {LOG_FILE_PATH}")
 
 # Menambahkan expander agar data sampel bisa dilihat saat live mentoring.
 with st.expander("Lihat Sampel Dataset Terproses"):

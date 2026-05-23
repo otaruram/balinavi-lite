@@ -16,6 +16,16 @@ Gunakan branch:
 ## 3) Dependencies
 Semua dependency sudah ada di `be/requirements.txt`.
 
+## 3.1) Python Runtime (Wajib)
+Untuk mencegah kegagalan build paket native (misalnya Pillow/pandas) di environment Python 3.14,
+deployment ini dipin ke Python 3.12 melalui file:
+
+`runtime.txt`
+
+Isi file:
+
+`python-3.12.10`
+
 ## 4) Dataset Path
 Secara default aplikasi membaca:
 
